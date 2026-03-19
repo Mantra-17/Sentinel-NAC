@@ -1,0 +1,19 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Config with secrets
+config/.env
+
+# Generated reports
+reports/output/*.pdf
+
+# Logs
+logs/*.log
+
+# macOS
+.DS_Store

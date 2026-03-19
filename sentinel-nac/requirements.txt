@@ -1,0 +1,23 @@
+# Sentinel-NAC: Python Dependencies
+# File: requirements.txt
+# Install with: pip install -r requirements.txt
+
+# Core packet sniffing and crafting
+scapy>=2.5.0
+
+# MySQL connector
+mysql-connector-python>=8.0.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# PDF report generation
+reportlab>=4.0.0
+
+# Optional: for more advanced DHCP fingerprinting
+# pyshark>=0.6           # needs tshark installed
+# python-nmap>=0.7.1     # needs nmap installed
+
+# Development / testing
+pytest>=7.0.0
+pytest-mock>=3.0.0
