@@ -73,7 +73,6 @@ npm install
 npx prisma db push  # Synchronize schema to PostgreSQL
 npm run dev
 ```
-Visit: [http://localhost:3000](http://localhost:3000)
 
 ---
 
