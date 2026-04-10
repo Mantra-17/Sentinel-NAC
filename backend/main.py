@@ -22,6 +22,7 @@ from scanner.arp_scanner import ARPScanner
 from policy.decision_engine import DecisionEngine
 from fingerprinting.fingerprint import fingerprint_device
 from enforcement.quarantine import QuarantineController
+from enforcement.portal import CaptivePortalServer
 from alerts.email_alert import AlertService
 
 # Setup global logger
@@ -36,6 +37,7 @@ class SentinelNAC:
         self.policy_engine = DecisionEngine()
         self.enforcement = QuarantineController()
         self.alerts = AlertService()
+        self.portal = CaptivePortalServer(port=8080) # Using 8080 as backup if 80 is busy
         
         self.scanner = ARPScanner(
             interface=SCAN_INTERFACE if not simulate else "simulate",
@@ -70,6 +72,7 @@ class SentinelNAC:
     def run(self):
         """Start the scanner and wait for shutdown signal."""
         try:
+            self.portal.start()
             self.scanner.start()
             logger.info("Sentinel-NAC Backend started and listening...")
             while self.running:
@@ -85,6 +88,7 @@ class SentinelNAC:
         logger.info("Shutting down Sentinel-NAC...")
         self.running = False
         self.scanner.stop()
+        self.portal.stop()
         self.alerts.stop()
         logger.info("Shutdown complete.")
 

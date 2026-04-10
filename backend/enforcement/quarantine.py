@@ -236,6 +236,100 @@ class DenylistEnforcement(BaseEnforcement):
 
 
 # ---------------------------------------------------------------------------
+# Portal mode (ARP Spoofing + Redirection)
+# ---------------------------------------------------------------------------
+
+class ArpSpoofEnforcement(BaseEnforcement):
+    """
+    Advanced enforcement: Uses ARP Spoofing to intercept a device's traffic
+    and redirect it to the local Captive Portal (port 80/8080).
+    WARNING: Requires Scapy and root privileges.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._spoof_threads: Dict[str, threading.Event] = {}
+        from scapy.all import getmacbyip
+        self._get_mac_by_ip = getmacbyip
+        # In portal mode, we detect gateway IP from settings or netstat
+        self.gateway_ip = "192.168.0.1" # Default common gateway
+
+    def restrict(self, mac: str, ip: str, device_id: int) -> bool:
+        logger.warning("[PORTAL] Starting ARP Spoofing/Isolation for MAC=%s IP=%s", mac, ip)
+        
+        if mac in self._spoof_threads:
+            return True
+
+        stop_event = threading.Event()
+        t = threading.Thread(
+            target=self._spoof_loop,
+            args=(mac, ip, stop_event),
+            daemon=True,
+            name=f"spoof-{mac}"
+        )
+        self._spoof_threads[mac] = stop_event
+        t.start()
+        
+        self._mark_restricted(mac)
+        db.log_event(
+            mac_address=mac, ip_address=ip,
+            event_type="ENFORCEMENT_STARTED",
+            actor="system",
+            details="ARP Spoofing started. Traffic redirected to Captive Portal."
+        )
+        return True
+
+    def release(self, mac: str, ip: str, device_id: int) -> bool:
+        logger.info("[PORTAL] Stopping ARP Spoofing for MAC=%s", mac)
+        stop_event = self._spoof_threads.pop(mac, None)
+        if stop_event:
+            stop_event.set()
+            
+        self._unmark_restricted(mac)
+        db.log_event(
+            mac_address=mac, ip_address=ip,
+            event_type="ENFORCEMENT_STOPPED",
+            actor="system",
+            details="ARP Spoofing stopped. Device released."
+        )
+        return True
+
+    def _spoof_loop(self, target_mac: str, target_ip: str, stop_event: threading.Event):
+        """Continuously poison the target's ARP cache to point to US."""
+        from scapy.all import ARP, Ether, sendp
+        
+        # We also need the gateway's MAC to convince the device we are the gateway
+        gateway_mac = self._get_mac_by_ip(self.gateway_ip)
+        if not gateway_mac:
+            logger.error("Could not find MAC for gateway %s. ARP spoofing might fail.", self.gateway_ip)
+            gateway_mac = "ff:ff:ff:ff:ff:ff"
+
+        logger.debug("ARP Spoof loop started for %s (Gateway: %s)", target_ip, self.gateway_ip)
+        
+        while not stop_event.is_set():
+            try:
+                # Poison the target: "I am the gateway"
+                # Op=2 is ARP reply
+                # psrc=gateway_ip means we claim to be the gateway
+                poison_dst = Ether(dst=target_mac) / ARP(op=2, psrc=self.gateway_ip, pdst=target_ip, hwdst=target_mac)
+                sendp(poison_dst, verbose=False)
+                
+                # We can also poison the gateway if we want full man-in-the-middle
+                # poison_src = Ether(dst=gateway_mac) / ARP(op=2, psrc=target_ip, pdst=self.gateway_ip, hwdst=gateway_mac)
+                # sendp(poison_src, verbose=False)
+                
+            except Exception as e:
+                logger.error("Error in spoof loop for %s: %s", target_ip, e)
+            
+            stop_event.wait(2) # Send every 2 seconds
+
+        # Cleanup: Re-map the target back to the real gateway
+        logger.debug("Sending ARP restoration packets for %s", target_ip)
+        restore = Ether(dst=target_mac) / ARP(op=2, psrc=self.gateway_ip, hwsrc=gateway_mac, pdst=target_ip, hwdst=target_mac)
+        sendp(restore, count=5, verbose=False)
+
+
+# ---------------------------------------------------------------------------
 # Factory function
 # ---------------------------------------------------------------------------
 
@@ -251,6 +345,9 @@ def get_enforcement_engine() -> BaseEnforcement:
     elif mode == "denylist":
         logger.info("Enforcement mode: DENYLIST")
         return DenylistEnforcement()
+    elif mode == "portal":
+        logger.info("Enforcement mode: PORTAL (ARP Spoofing)")
+        return ArpSpoofEnforcement()
     else:
         logger.info("Enforcement mode: SIMULATION")
         return SimulationEnforcement()
