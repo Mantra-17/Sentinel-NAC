@@ -18,152 +18,177 @@ PORTAL_HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NETWORK_ACCESS_DENIED // SENTINEL-NAC</title>
+    <title>TERMINAL_LOCKDOWN // SENTINEL-NAC</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
         
         body {
             margin: 0;
             padding: 0;
-            background-color: #000;
+            background-color: #050505;
             color: #fff;
-            font-family: 'Inter', sans-serif;
+            font-family: 'JetBrains Mono', monospace;
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            text-transform: uppercase;
         }
 
-        .container {
+        .glass-panel {
             width: 100%;
-            max-width: 600px;
-            padding: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.02);
+            max-width: 700px;
+            padding: 60px;
+            background: rgba(255, 255, 255, 0.01);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
             position: relative;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.8);
         }
 
-        .header {
+        .scanner-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ef4444, transparent);
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .lock-icon {
+            font-size: 14px;
+            font-weight: 800;
+            color: #ef4444;
+            letter-spacing: 0.5em;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 40px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            padding-bottom: 20px;
+            gap: 10px;
         }
 
-        .alert-icon {
-            width: 50px;
-            height: 50px;
-            border: 1px solid #ef4444;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ef4444;
-            font-size: 24px;
-            font-weight: 900;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
-        .status-badge {
-            font-size: 10px;
-            font-weight: 900;
-            letter-spacing: 0.2em;
-            color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-            padding: 4px 12px;
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            display: inline-block;
-            margin-bottom: 10px;
+        .lock-icon::before, .lock-icon::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(239, 68, 68, 0.2);
         }
 
         h1 {
-            font-size: 40px;
-            font-weight: 900;
+            font-size: 52px;
+            font-weight: 800;
             margin: 0;
-            letter-spacing: -0.05em;
-            line-height: 0.9;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.4) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .content {
-            margin-top: 30px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.4);
-            letter-spacing: 0.05em;
-            line-height: 1.6;
-        }
-
-        .details {
-            margin-top: 40px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.03);
-            border-left: 2px solid #ef4444;
-        }
-
-        .details-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
+        .alert-sub {
             font-size: 10px;
+            color: #ef4444;
+            font-weight: 800;
+            letter-spacing: 0.4em;
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+
+        .message {
+            margin-top: 40px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            line-height: 1.8;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding-left: 25px;
+        }
+
+        .data-grid {
+            margin-top: 50px;
+            display: grid;
+            grid-template-cols: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .data-item {
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .label {
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.2);
+            font-weight: 800;
+            letter-spacing: 0.2em;
+            margin-bottom: 5px;
+        }
+
+        .value {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.8);
             font-weight: 700;
         }
 
         .footer {
-            margin-top: 40px;
-            font-size: 9px;
-            color: rgba(255, 255, 255, 0.2);
-            text-align: center;
-            letter-spacing: 0.3em;
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.1);
+            letter-spacing: 0.2em;
         }
 
-        .glitch-bar {
+        .noise {
             position: absolute;
-            top: 0;
-            left: 0;
-            height: 2px;
-            width: 100%;
-            background: #ef4444;
-            opacity: 0.5;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="glitch-bar"></div>
-        <div class="header">
-            <div class="alert-icon">!</div>
-            <div>
-                <div class="status-badge">ROGUE_DEVICE_IDENTIFIED</div>
-                <h1>ACCESS_DENIED</h1>
+    <div class="noise"></div>
+    <div class="glass-panel">
+        <div class="scanner-line"></div>
+        <div class="lock-icon">ESTABLISHING_QUARANTINE</div>
+        <h1>ACCESS_DENIED</h1>
+        <div class="alert-sub">ROGUE_NODE_DETECTED_0x442</div>
+        
+        <div class="message">
+            This network is actively monitored by <strong>SENTINEL-NAC</strong>. Your device hardware signature does not match any authorized profiles in the root registry. Access to external gateways has been restricted.
+        </div>
+
+        <div class="data-grid">
+            <div class="data-item">
+                <div class="label">ENFORCEMENT_PROTOCOL</div>
+                <div class="value">ARP_ISOLATION_v2.1</div>
+            </div>
+            <div class="data-item">
+                <div class="label">THREAT_LEVEL</div>
+                <div class="value" style="color: #ef4444;">CRITICAL</div>
+            </div>
+            <div class="data-item">
+                <div class="label">GATEWAY_BLOCK</div>
+                <div class="value">192.168.0.1 // ACTIVE</div>
+            </div>
+            <div class="data-item">
+                <div class="label">SYSTEM_ADMIN</div>
+                <div class="value">MANTRA PATEL</div>
             </div>
         </div>
-        <div class="content">
-            Your device has been isolated from the network. This system is protected by <strong>SENTINEL-NAC Zero-Trust</strong> policies. Unauthorized connection attempts have been logged and reported to the system administrator.
-        </div>
-        <div class="details">
-            <div class="details-row">
-                <span>SYSTEM_NODE</span>
-                <span>SGP_SECURE_LABS_01</span>
-            </div>
-            <div class="details-row">
-                <span>ENFORCEMENT</span>
-                <span>QUARANTINE_LEVEL_3</span>
-            </div>
-            <div class="details-row">
-                <span>OPERATOR</span>
-                <span>MANTRA_PATEL</span>
-            </div>
-        </div>
+
         <div class="footer">
-            SENTINEL-NAC // SECURE_NETWORK_ENFORCEMENT // V1.0
+            <span>SGP_SECURE_LABS // 2026</span>
+            <span>POWERED_BY_SENTINEL_ENGINE</span>
         </div>
     </div>
 </body>
