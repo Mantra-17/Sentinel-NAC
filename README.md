@@ -1,19 +1,18 @@
-# Sentinel-NAC: Modern Network Access Control
+# Sentinel-NAC: Industrial-Grade Network Access Control
 
-> **Security Engineering Project** — A Zero-Trust solution for local network monitoring and enforcement.
+> **Zero-Trust Network Enforcement** — A professional solution for active network isolation, rogue device identification, and automated quarantine.
 
-Sentinel-NAC is an industrial-grade Network Access Control (NAC) system designed to monitor, identify, and manage devices on a local area network. Built on a modern **Next.js & Python** stack, it implements Zero-Trust principles by automatically quarantining unknown devices until explicitly approved by an administrator.
+Sentinel-NAC is a high-performance Network Access Control (NAC) system built to secure local area networks using active redirection and link-layer enforcement. Unlike simple monitoring tools, Sentinel-NAC actively **intercepts** unauthorized traffic via ARP and DNS poisoning, forcing rogue devices into a professional Isolation Portal until verified by an administrator.
 
 ---
 
-## 🚀 Key Features
+## 🛡️ Industrial Enforcement Capabilities
 
-- **Live ARP Scanning**: Real-time discovery of connected devices using Scapy (sniffing and active sweeping).
-- **Zero-Trust Enforcement**: Automatic `QUARANTINED` status for all new discoveries.
-- **Administrative Control**: Professional dashboard with Glassmorphic UI to Allow, Block, or Forget devices.
-- **Device Fingerprinting**: Automated OUI-based vendor lookup and TTL-based OS estimation.
-- **Persistence**: Full state management powered by **PostgreSQL** and **Prisma ORM**.
-- **Security Alerts**: Real-time SMTP notifications for critical security events.
+- **Active Isolation (ARP Poisoning)**: Intercepts device traffic at the hardware level, convincing the target that the NAC station is the network gateway.
+- **Universal Redirection (DNS Poisoning)**: Captures DNS queries from blocked devices and redirects all domain requests to the NAC Isolation Portal.
+- **Zero-Trust Baseline**: Automatically quarantines 100% of new devices by default, requiring explicit "Admin Approval" for network joining.
+- **Persistent Protection**: Enforcement state is synced with a PostgreSQL database; isolation remains active even across system restarts.
+- **Isolation Portal**: A professional-grade notification server (Port 80) that alerts unauthorized users of their security status.
 
 ---
 

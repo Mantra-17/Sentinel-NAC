@@ -207,6 +207,12 @@ def get_all_devices() -> List[Dict]:
     )
 
 
+def get_restricted_devices() -> List[Dict]:
+    """Return all devices currently marked as BLOCKED or QUARANTINED."""
+    sql = "SELECT id, mac_address, ip_address, status FROM devices WHERE status IN ('BLOCKED', 'QUARANTINED')"
+    return execute_query(sql, fetch=True)
+
+
 # ---------------------------------------------------------------------------
 # Event logging helpers
 # ---------------------------------------------------------------------------

@@ -433,6 +433,25 @@ class QuarantineController:
         self._engine = get_enforcement_engine()
         # Track which MACs currently have active enforcement
         self._active_enforcement: Dict[str, str] = {}  # mac -> ip
+        self.sync_from_db()
+
+    def sync_from_db(self) -> None:
+        """Query the database for all currently restricted devices and re-apply enforcement."""
+        logger.info("[CONTROLLER] Synchronizing enforcement state from database...")
+        try:
+            # We want to re-enforce anyone marked BLOCKED or QUARANTINED
+            # Note: We only re-apply if we have a known MAC and IP
+            restricted_devices = db.get_restricted_devices()
+            for dev in restricted_devices:
+                mac = dev["mac_address"]
+                ip = dev["ip_address"]
+                if mac and ip:
+                    logger.info("[CONTROLLER] Resuming protection for MAC=%s (Status=%s)", mac, dev["status"])
+                    success = self._engine.restrict(mac, ip, dev["id"])
+                    if success:
+                        self._active_enforcement[mac] = ip
+        except Exception as e:
+            logger.error("[CONTROLLER] Failed to sync from DB: %s", e)
 
     def handle_device_decision(self, decision: Dict) -> None:
         """
