@@ -207,7 +207,7 @@ class PortalHandler(http.server.SimpleHTTPRequestHandler):
         pass
 
 class CaptivePortalServer:
-    def __init__(self, host: str = "0.0.0.0", port: int = 8080):
+    def __init__(self, host: str = "0.0.0.0", port: int = 80):
         self.host = host
         self.port = port
         self.httpd: Optional[socketserver.TCPServer] = None

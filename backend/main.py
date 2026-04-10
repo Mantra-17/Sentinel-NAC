@@ -37,7 +37,7 @@ class SentinelNAC:
         self.policy_engine = DecisionEngine()
         self.enforcement = QuarantineController()
         self.alerts = AlertService()
-        self.portal = CaptivePortalServer(port=8080) # Using 8080 as backup if 80 is busy
+        self.portal = CaptivePortalServer(port=80) 
         
         self.scanner = ARPScanner(
             interface=SCAN_INTERFACE if not simulate else "simulate",

@@ -236,52 +236,101 @@ class DenylistEnforcement(BaseEnforcement):
 
 
 # ---------------------------------------------------------------------------
-# Portal mode (ARP Spoofing + Redirection)
+# Portal mode (ARP Spoofing + DNS Spoofing + Redirection)
 # ---------------------------------------------------------------------------
 
 class ArpSpoofEnforcement(BaseEnforcement):
     """
-    Advanced enforcement: Uses ARP Spoofing to intercept a device's traffic
-    and redirect it to the local Captive Portal (port 80/8080).
+    Advanced enforcement: Uses ARP Spoofing AND DNS Spoofing to intercept 
+    a device's traffic and force it to the local Captive Portal (port 80).
     WARNING: Requires Scapy and root privileges.
     """
 
     def __init__(self):
         super().__init__()
-        self._spoof_threads: Dict[str, threading.Event] = {}
+        self._enforcement_threads: Dict[str, threading.Event] = {}
         from scapy.all import getmacbyip
         self._get_mac_by_ip = getmacbyip
-        # In portal mode, we detect gateway IP from settings or netstat
-        self.gateway_ip = "192.168.0.1" # Default common gateway
+        
+        # Detect Gateway and Local IP dynamically
+        self.gateway_ip = self._detect_gateway()
+        self.local_ip = self._detect_local_ip()
+        logger.info("[PORTAL] Initialized: Gateway=%s  LocalHost=%s", self.gateway_ip, self.local_ip)
+
+    def _detect_gateway(self) -> str:
+        """Attempt to find the default gateway IP dynamically."""
+        try:
+            # Common method: check default route
+            import socket
+            import struct
+            with open("/proc/net/route") as f:
+                for line in f:
+                    fields = line.strip().split()
+                    if fields[1] == '00000000' and fields[3] == '0003':
+                        return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
+        except:
+            # macOS / fallback
+            try:
+                out = subprocess.check_output("netstat -nr | grep default", shell=True).decode()
+                for line in out.splitlines():
+                    if "UGSc" in line or "UGc" in line:
+                        return line.split()[1]
+            except:
+                pass
+        return "192.168.0.1" # Safety fallback
+
+    def _detect_local_ip(self) -> str:
+        """Detect the IP of this Mac on the active network."""
+        try:
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return "127.0.0.1"
 
     def restrict(self, mac: str, ip: str, device_id: int) -> bool:
-        logger.warning("[PORTAL] Starting ARP Spoofing/Isolation for MAC=%s IP=%s", mac, ip)
+        logger.warning("[PORTAL] Starting LOCKDOWN (ARP+DNS) for MAC=%s IP=%s", mac, ip)
         
-        if mac in self._spoof_threads:
+        if mac in self._enforcement_threads:
             return True
 
         stop_event = threading.Event()
-        t = threading.Thread(
-            target=self._spoof_loop,
+        
+        # Start ARP Spoofing Thread
+        t_arp = threading.Thread(
+            target=self._arp_spoof_loop,
             args=(mac, ip, stop_event),
             daemon=True,
-            name=f"spoof-{mac}"
+            name=f"arp-spoof-{mac}"
         )
-        self._spoof_threads[mac] = stop_event
-        t.start()
+        
+        # Start DNS Spoofing Thread (Targets this specific device's requests)
+        t_dns = threading.Thread(
+            target=self._dns_spoof_loop,
+            args=(mac, ip, stop_event),
+            daemon=True,
+            name=f"dns-spoof-{mac}"
+        )
+        
+        self._enforcement_threads[mac] = stop_event
+        t_arp.start()
+        t_dns.start()
         
         self._mark_restricted(mac)
         db.log_event(
             mac_address=mac, ip_address=ip,
             event_type="ENFORCEMENT_STARTED",
             actor="system",
-            details="ARP Spoofing started. Traffic redirected to Captive Portal."
+            details="ARP+DNS Spoofing active. Device isolated to Captive Portal."
         )
         return True
 
     def release(self, mac: str, ip: str, device_id: int) -> bool:
-        logger.info("[PORTAL] Stopping ARP Spoofing for MAC=%s", mac)
-        stop_event = self._spoof_threads.pop(mac, None)
+        logger.info("[PORTAL] Ending LOCKDOWN for MAC=%s", mac)
+        stop_event = self._enforcement_threads.pop(mac, None)
         if stop_event:
             stop_event.set()
             
@@ -290,43 +339,60 @@ class ArpSpoofEnforcement(BaseEnforcement):
             mac_address=mac, ip_address=ip,
             event_type="ENFORCEMENT_STOPPED",
             actor="system",
-            details="ARP Spoofing stopped. Device released."
+            details="Enforcement released. Network access restored."
         )
         return True
 
-    def _spoof_loop(self, target_mac: str, target_ip: str, stop_event: threading.Event):
-        """Continuously poison the target's ARP cache to point to US."""
+    def _arp_spoof_loop(self, target_mac: str, target_ip: str, stop_event: threading.Event):
+        """Continuously poison the target's ARP cache."""
         from scapy.all import ARP, Ether, sendp
         
-        # We also need the gateway's MAC to convince the device we are the gateway
         gateway_mac = self._get_mac_by_ip(self.gateway_ip)
         if not gateway_mac:
-            logger.error("Could not find MAC for gateway %s. ARP spoofing might fail.", self.gateway_ip)
             gateway_mac = "ff:ff:ff:ff:ff:ff"
 
-        logger.debug("ARP Spoof loop started for %s (Gateway: %s)", target_ip, self.gateway_ip)
-        
         while not stop_event.is_set():
             try:
-                # Poison the target: "I am the gateway"
-                # Op=2 is ARP reply
-                # psrc=gateway_ip means we claim to be the gateway
-                poison_dst = Ether(dst=target_mac) / ARP(op=2, psrc=self.gateway_ip, pdst=target_ip, hwdst=target_mac)
-                sendp(poison_dst, verbose=False)
-                
-                # We can also poison the gateway if we want full man-in-the-middle
-                # poison_src = Ether(dst=gateway_mac) / ARP(op=2, psrc=target_ip, pdst=self.gateway_ip, hwdst=gateway_mac)
-                # sendp(poison_src, verbose=False)
-                
+                # Poison target: Gateway is AT US
+                poison = Ether(dst=target_mac) / ARP(op=2, psrc=self.gateway_ip, pdst=target_ip, hwdst=target_mac)
+                sendp(poison, verbose=False)
             except Exception as e:
-                logger.error("Error in spoof loop for %s: %s", target_ip, e)
-            
-            stop_event.wait(2) # Send every 2 seconds
+                logger.error("ARP Loop Error: %s", e)
+            stop_event.wait(2)
 
-        # Cleanup: Re-map the target back to the real gateway
-        logger.debug("Sending ARP restoration packets for %s", target_ip)
+        # Restore
         restore = Ether(dst=target_mac) / ARP(op=2, psrc=self.gateway_ip, hwsrc=gateway_mac, pdst=target_ip, hwdst=target_mac)
         sendp(restore, count=5, verbose=False)
+
+    def _dns_spoof_loop(self, target_mac: str, target_ip: str, stop_event: threading.Event):
+        """Intercept DNS queries from the target and answer with OUR IP."""
+        from scapy.all import sniff, IP, UDP, DNS, DNSRR, send
+        
+        def dns_callback(pkt):
+            if stop_event.is_set(): return
+            
+            # Check if it's a DNS query from our target
+            if pkt.haslayer(DNS) and pkt.getlayer(DNS).qr == 0:
+                if pkt.haslayer(IP) and pkt[IP].src == target_ip:
+                    try:
+                        # Forge the response
+                        qname = pkt[DNS].qd.qname
+                        spf_pkt = (IP(dst=pkt[IP].src, src=pkt[IP].dst) /
+                                  UDP(dport=pkt[UDP].sport, sport=pkt[UDP].dport) /
+                                  DNS(id=pkt[DNS].id, qd=pkt[DNS].qd, aa=1, qr=1, 
+                                      an=DNSRR(rrname=qname, ttl=10, rdata=self.local_ip)))
+                        send(spf_pkt, verbose=False)
+                        logger.debug("[DNS] Intercepted %s request from %s -> Redirecting to %s", 
+                                     qname.decode(), target_ip, self.local_ip)
+                    except Exception as e:
+                        logger.error("DNS Spoof Error: %s", e)
+
+        # Sniff only UDP port 53 traffic from the target IP
+        sniff_filter = f"udp and port 53 and host {target_ip}"
+        
+        # Note: sniff() is blocking, so we check stop_event periodically within the loop
+        while not stop_event.is_set():
+            sniff(filter=sniff_filter, prn=dns_callback, store=0, count=1, timeout=1)
 
 
 # ---------------------------------------------------------------------------
