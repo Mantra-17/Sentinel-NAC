@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #080808;
+  --color-foreground: #F2F2F2;
+  --color-accent: #22C55E;
+  --color-card: #111111;
+  --color-muted: #888888;
+  
+  --font-mono: var(--font-geist-mono), JetBrains Mono, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-mono antialiased;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /* Minimalist Technical Card */
+  .cyber-panel {
+    @apply bg-card border border-white/[0.06] rounded-none;
+  }
+
+  /* Stark Buttons */
+  .cyber-btn {
+    @apply px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-white/20 hover:border-white hover:bg-white hover:text-black transition-all disabled:opacity-30;
+  }
+
+  .cyber-btn-accent {
+    @apply px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest border border-accent/40 text-accent hover:bg-accent hover:text-black transition-all;
+  }
+
+  /* Clean Inputs */
+  .cyber-input-minimal {
+    @apply bg-transparent border-b border-white/10 px-0 py-2 text-xs focus:outline-none focus:border-accent transition-colors placeholder:text-white/10;
+  }
+
+  /* Minimal Status */
+  .status-dot {
+    @apply w-1.5 h-1.5 rounded-full inline-block mr-2;
+  }
+}
+
+/* Custom Scrollbar - Stark */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 hover:bg-white/20;
+}
+
+/* No grid, just a subtle scanline effect for a "manually created" technical feel */
+.scanline {
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(255, 255, 255, 0.01) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}

@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+dist/
+build/
+.next/
+.pnp
+.pnp.*
+yarn-error.log*
+npm-debug.log*
+
+# Python
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Configuration (CRITICAL: DO NOT COMMIT REAL SECRETS)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+prisma/dev.db
+prisma/dev.db-journal
+*.sqlite
+*.sqlite-journal
+
+# Logs
+logs/*.log
+*.log
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+reports/output/*
+!reports/output/.gitkeep

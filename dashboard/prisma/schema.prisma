@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DeviceStatus {
+  UNKNOWN
+  ALLOWED
+  BLOCKED
+  QUARANTINED
+}
+
+enum AdminRole {
+  superadmin
+  admin
+  viewer
+}
+
+enum EventType {
+  DEVICE_DISCOVERED
+  STATUS_CHANGED
+  ENFORCEMENT_STARTED
+  ENFORCEMENT_STOPPED
+  RECONNECT_BLOCKED
+  ADMIN_ACTION
+  ALERT_SENT
+  ERROR
+}
+
+enum AlertType {
+  NEW_UNKNOWN_DEVICE
+  BLOCKED_RECONNECT
+  ENFORCEMENT_FAILURE
+  SYSTEM_ERROR
+}
+
+enum AlertStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Admin {
+  id        Int       @id @default(autoincrement())
+  username  String    @unique @db.VarChar(64)
+  password  String    @db.VarChar(255)
+  email     String    @db.VarChar(128)
+  role      AdminRole @default(admin)
+  lastLogin DateTime? @map("last_login")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("admins")
+}
+
+model Device {
+  id                    Int          @id @default(autoincrement())
+  macAddress            String       @unique @map("mac_address") @db.VarChar(17)
+  ipAddress             String?      @map("ip_address") @db.VarChar(45)
+  hostname              String?      @db.VarChar(128)
+  vendor                String?      @db.VarChar(128)
+  probableOs            String?      @map("probable_os") @db.VarChar(64)
+  probableDeviceType    String?      @map("probable_device_type") @db.VarChar(64)
+  fingerprintConfidence Int?         @default(0) @map("fingerprint_confidence")
+  status                DeviceStatus @default(QUARANTINED)
+  firstSeen             DateTime     @default(now()) @map("first_seen")
+  lastSeen              DateTime     @default(now()) @updatedAt @map("last_seen")
+  notes                 String?
+
+  events DeviceEvent[]
+  alerts Alert[]
+
+  @@index([status])
+  @@index([lastSeen])
+  @@map("devices")
+}
+
+model DeviceEvent {
+  id         Int           @id @default(autoincrement())
+  macAddress String        @map("mac_address") @db.VarChar(17)
+  ipAddress  String?       @map("ip_address") @db.VarChar(45)
+  eventType  EventType     @map("event_type")
+  oldStatus  DeviceStatus? @map("old_status")
+  newStatus  DeviceStatus? @map("new_status")
+  actor      String?       @db.VarChar(64)
+  details    String?
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  device Device? @relation(fields: [macAddress], references: [macAddress])
+
+  @@index([macAddress])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("device_events")
+}
+
+model Alert {
+  id         Int         @id @default(autoincrement())
+  macAddress String?     @map("mac_address") @db.VarChar(17)
+  alertType  AlertType   @map("alert_type")
+  recipient  String      @db.VarChar(128)
+  subject    String      @db.VarChar(255)
+  body       String
+  sentAt     DateTime?   @map("sent_at")
+  status     AlertStatus @default(PENDING)
+  errorMsg   String?     @map("error_msg") @db.VarChar(512)
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  device Device? @relation(fields: [macAddress], references: [macAddress])
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("alerts")
+}
+
+model SystemSetting {
+  key         String   @id @map("setting_key") @db.VarChar(64)
+  value       String   @map("setting_value")
+  description String?  @db.VarChar(255)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
