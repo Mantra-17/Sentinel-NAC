@@ -23,11 +23,11 @@ export const authConfig = {
     },
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as any).role;
-        token.name = user.name;
+        token.role = (user as any).role || "viewer";
+        token.userName = user.name;
       }
-      // Safety Net: If user is admin but role is missing, force it
-      if (!token.role && token.name === "admin") {
+      // Safety Net: Force admin role if username matches
+      if (token.userName === "admin") {
         token.role = "superadmin";
       }
       return token;
@@ -35,7 +35,7 @@ export const authConfig = {
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).role = token.role;
-        session.user.name = token.name;
+        session.user.name = token.userName as string;
       }
       return session;
     },
