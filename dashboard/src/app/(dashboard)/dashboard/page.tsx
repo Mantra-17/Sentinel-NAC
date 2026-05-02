@@ -1,4 +1,4 @@
-import { 
+import {
   ArrowUpRight,
   ShieldAlert,
   Terminal,
@@ -78,7 +78,7 @@ export default async function DashboardPage() {
               </div>
               <span className="text-[9px] font-bold text-white/20 font-mono">LIVE_FEED</span>
             </div>
-            
+
             <div className="space-y-6">
               {alerts.map((alert) => (
                 <div key={alert.id} className="space-y-1.5 group cursor-pointer">
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
               <Terminal className="w-4 h-4 text-white/30" />
               <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40">Diagnostics</h3>
             </div>
-            
+
             <div className="space-y-5">
               <MetricRow icon={Cpu} label="CPU_LOAD" value="12.4%" progress={12.4} />
               <MetricRow icon={Database} label="MEM_USED" value="45.2%" progress={45.2} />
@@ -149,9 +149,9 @@ function MetricRow({ icon: Icon, label, value, progress }: any) {
         <span className="text-accent">{value}</span>
       </div>
       <div className="h-[2px] w-full bg-white/5 relative">
-        <div 
-          className="h-full bg-accent absolute top-0 left-0 transition-all duration-1000" 
-          style={{ width: `${progress}%` }} 
+        <div
+          className="h-full bg-accent absolute top-0 left-0 transition-all duration-1000"
+          style={{ width: `${progress}%` }}
         />
       </div>
     </div>
