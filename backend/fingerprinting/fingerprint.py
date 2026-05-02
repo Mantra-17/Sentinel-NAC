@@ -80,9 +80,9 @@ def lookup_vendor(mac: str) -> Optional[str]:
 # These are starting TTL values that decrease by 1 per hop.
 # ---------------------------------------------------------------------------
 _TTL_OS_MAP = [
-    (range(60, 66),  "Linux / macOS / Android",  "Laptop/Desktop or Mobile"),
-    (range(125, 132), "Windows",                 "Laptop/Desktop"),
-    (range(250, 256), "Network Device (Cisco/HP)", "Router/Switch"),
+    (range(55, 70),   "Linux / macOS / Android",    "Laptop/Desktop or Mobile"),
+    (range(110, 132), "Windows",                     "Laptop/Desktop"),
+    (range(245, 256), "Network Device (Cisco/HP)",   "Router/Switch"),
 ]
 
 

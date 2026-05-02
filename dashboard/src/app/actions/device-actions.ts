@@ -19,6 +19,14 @@ export async function getDevices() {
 }
 
 export async function updateDeviceStatus(id: number, status: DeviceStatus) {
+  // Runtime input validation (TypeScript types are stripped at runtime)
+  if (!Number.isInteger(id) || id < 1) {
+    throw new Error("Invalid device ID: must be a positive integer.");
+  }
+  const validStatuses: DeviceStatus[] = ["UNKNOWN", "ALLOWED", "BLOCKED", "QUARANTINED"];
+  if (!validStatuses.includes(status)) {
+    throw new Error("Invalid status value.");
+  }
   try {
     const session = await auth();
     const userRole = (session?.user as any)?.role;
@@ -48,6 +56,10 @@ export async function updateDeviceStatus(id: number, status: DeviceStatus) {
 }
 
 export async function deleteDevice(id: number) {
+  // Runtime input validation
+  if (!Number.isInteger(id) || id < 1) {
+    throw new Error("Invalid device ID: must be a positive integer.");
+  }
   try {
     const session = await auth();
     const userRole = (session?.user as any)?.role;

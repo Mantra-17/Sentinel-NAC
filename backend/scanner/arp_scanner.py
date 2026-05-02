@@ -187,6 +187,7 @@ class ARPScanner:
         Emit fake devices in a loop to simulate a live network.
         Introduces them one-by-one with a short delay so the demo
         shows real-time detection behavior.
+        Resets the seen cache after each full cycle to keep the demo alive.
         """
         devices = list(self.SIMULATION_DEVICES)
         index = 0
@@ -194,6 +195,10 @@ class ARPScanner:
             device = devices[index % len(devices)]
             self._notify(device["mac"], device["ip"], source="simulation")
             index += 1
+            # Reset seen cache after each full cycle to re-trigger discovery
+            if index % len(devices) == 0:
+                with self._lock:
+                    self._seen_macs.clear()
             # Wait the configured interval before emitting next device
             self._stop_event.wait(self.interval)
 

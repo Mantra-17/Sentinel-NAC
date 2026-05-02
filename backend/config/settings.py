@@ -55,7 +55,10 @@ VALID_STATUSES = {"UNKNOWN", "ALLOWED", "BLOCKED", "QUARANTINED"}
 # Enforcement settings
 # ---------------------------------------------------------------------------
 ENFORCEMENT_MODE = os.getenv("ENFORCEMENT_MODE", "simulation").lower()
-# Valid values: simulation | firewall | denylist
+# Valid values: simulation | firewall | denylist | portal
+
+# Admin name displayed on the captive portal page (avoid hardcoding real names)
+SYSTEM_ADMIN_NAME = os.getenv("SYSTEM_ADMIN_NAME", "System Administrator")
 
 
 # ---------------------------------------------------------------------------

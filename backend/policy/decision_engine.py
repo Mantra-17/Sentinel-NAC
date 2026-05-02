@@ -128,6 +128,15 @@ class DecisionEngine:
             # but handle defensively.
             action        = "enforce"
             trigger_alert = True
+            db.log_event(
+                mac_address=mac,
+                ip_address=ip,
+                event_type="DEVICE_DISCOVERED",
+                new_status=status,
+                actor="system",
+                details="Device has UNKNOWN status (defensive fallback). Enforcing quarantine.",
+            )
+            logger.warning("Device %s has UNKNOWN status — enforcing as precaution.", mac)
 
         return {
             "device":        device,

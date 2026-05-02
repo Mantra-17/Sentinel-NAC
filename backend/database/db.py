@@ -57,6 +57,15 @@ def _get_pool() -> pool.ThreadedConnectionPool:
     return _pool
 
 
+def close_pool() -> None:
+    """Close the connection pool. Call during application shutdown."""
+    global _pool
+    if _pool:
+        _pool.closeall()
+        _pool = None
+        logger.info("Database connection pool closed.")
+
+
 @contextmanager
 def get_connection():
     """
@@ -159,6 +168,7 @@ def upsert_device(
             probable_os            = COALESCE(EXCLUDED.probable_os, devices.probable_os),
             probable_device_type   = COALESCE(EXCLUDED.probable_device_type, devices.probable_device_type),
             fingerprint_confidence = GREATEST(EXCLUDED.fingerprint_confidence, devices.fingerprint_confidence),
+            status                 = devices.status,
             last_seen              = CURRENT_TIMESTAMP
         RETURNING *
     """
@@ -205,6 +215,16 @@ def get_all_devices() -> List[Dict]:
         "SELECT * FROM devices ORDER BY last_seen DESC",
         fetch=True,
     )
+
+
+def get_devices_in_range(start_date: str, end_date: str) -> List[Dict]:
+    """Return devices first seen within the given date range."""
+    sql = """
+        SELECT * FROM devices
+        WHERE first_seen BETWEEN %s AND (%s::date + INTERVAL '1 day')
+        ORDER BY last_seen DESC
+    """
+    return execute_query(sql, (start_date, end_date), fetch=True)
 
 
 def get_restricted_devices() -> List[Dict]:

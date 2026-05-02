@@ -129,12 +129,17 @@ class FirewallEnforcement(BaseEnforcement):
             "[FIREWALL] Blocking MAC=%s  IP=%s via iptables", mac, ip
         )
         success = True
-        # Block incoming traffic from this MAC
+        # Block incoming traffic from this MAC (INPUT chain)
         success &= self._run_iptables([
             "-I", "INPUT", "-m", "mac",
             "--mac-source", mac, "-j", "DROP",
         ])
-        # Block outgoing traffic to this IP
+        # Block forwarded traffic from this MAC (FORWARD chain — covers routing)
+        success &= self._run_iptables([
+            "-I", "FORWARD", "-m", "mac",
+            "--mac-source", mac, "-j", "DROP",
+        ])
+        # Block outgoing traffic to this IP (OUTPUT chain — secondary defense)
         success &= self._run_iptables([
             "-I", "OUTPUT", "-d", ip, "-j", "DROP",
         ])
@@ -167,6 +172,10 @@ class FirewallEnforcement(BaseEnforcement):
             "--mac-source", mac, "-j", "DROP",
         ])
         success &= self._run_iptables([
+            "-D", "FORWARD", "-m", "mac",
+            "--mac-source", mac, "-j", "DROP",
+        ])
+        success &= self._run_iptables([
             "-D", "OUTPUT", "-d", ip, "-j", "DROP",
         ])
         self._unmark_restricted(mac)
@@ -174,7 +183,7 @@ class FirewallEnforcement(BaseEnforcement):
             mac_address=mac, ip_address=ip,
             event_type="ENFORCEMENT_STOPPED",
             actor="system",
-            details=f"iptables rules removed for MAC={mac}",
+            details=f"iptables rules removed for MAC={mac} (INPUT+FORWARD+OUTPUT)",
         )
         return success
 
@@ -249,35 +258,51 @@ class ArpSpoofEnforcement(BaseEnforcement):
     def __init__(self):
         super().__init__()
         self._enforcement_threads: Dict[str, threading.Event] = {}
-        from scapy.all import getmacbyip
-        self._get_mac_by_ip = getmacbyip
+        self._get_mac_by_ip = None  # Lazy-loaded from Scapy
         
         # Detect Gateway and Local IP dynamically
         self.gateway_ip = self._detect_gateway()
         self.local_ip = self._detect_local_ip()
         logger.info("[PORTAL] Initialized: Gateway=%s  LocalHost=%s", self.gateway_ip, self.local_ip)
 
+    def _ensure_scapy(self):
+        """Lazy-load Scapy's getmacbyip. Raises ImportError if not installed."""
+        if self._get_mac_by_ip is None:
+            try:
+                from scapy.all import getmacbyip
+                self._get_mac_by_ip = getmacbyip
+            except ImportError:
+                raise ImportError(
+                    "Scapy is required for portal enforcement mode. "
+                    "Install it with: pip install scapy"
+                )
+
     def _detect_gateway(self) -> str:
         """Attempt to find the default gateway IP dynamically."""
         try:
-            # Common method: check default route
+            # Linux: read /proc/net/route
             import socket
             import struct
             with open("/proc/net/route") as f:
                 for line in f:
                     fields = line.strip().split()
-                    if fields[1] == '00000000' and fields[3] == '0003':
+                    if fields[1] == '00000000':
                         return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
-        except:
-            # macOS / fallback
-            try:
-                out = subprocess.check_output("netstat -nr | grep default", shell=True).decode()
-                for line in out.splitlines():
-                    if "UGSc" in line or "UGc" in line:
-                        return line.split()[1]
-            except:
-                pass
-        return "192.168.0.1" # Safety fallback
+        except (FileNotFoundError, Exception):
+            pass
+        try:
+            # macOS / BSD: parse `route -n get default`
+            out = subprocess.check_output(
+                ["route", "-n", "get", "default"],
+                stderr=subprocess.DEVNULL, text=True
+            )
+            for line in out.splitlines():
+                if "gateway:" in line:
+                    return line.split(":")[1].strip()
+        except Exception:
+            pass
+        logger.warning("[PORTAL] Could not detect gateway — using fallback 192.168.0.1")
+        return "192.168.0.1"  # Safety fallback
 
     def _detect_local_ip(self) -> str:
         """Detect the IP of this Mac on the active network."""
@@ -292,6 +317,7 @@ class ArpSpoofEnforcement(BaseEnforcement):
             return "127.0.0.1"
 
     def restrict(self, mac: str, ip: str, device_id: int) -> bool:
+        self._ensure_scapy()
         logger.warning("[PORTAL] Starting LOCKDOWN (ARP+DNS) for MAC=%s IP=%s", mac, ip)
         
         if mac in self._enforcement_threads:
@@ -368,31 +394,37 @@ class ArpSpoofEnforcement(BaseEnforcement):
         """Intercept DNS queries from the target and answer with OUR IP."""
         from scapy.all import sniff, IP, UDP, DNS, DNSRR, send
         
+        logger.info("[DNS_DEBUG] DNS Sniffer starting for target %s", target_ip)
+        
         def dns_callback(pkt):
             if stop_event.is_set(): return
             
             # Check if it's a DNS query from our target
             if pkt.haslayer(DNS) and pkt.getlayer(DNS).qr == 0:
-                if pkt.haslayer(IP) and pkt[IP].src == target_ip:
-                    try:
-                        # Forge the response
-                        qname = pkt[DNS].qd.qname
-                        spf_pkt = (IP(dst=pkt[IP].src, src=pkt[IP].dst) /
-                                  UDP(dport=pkt[UDP].sport, sport=pkt[UDP].dport) /
-                                  DNS(id=pkt[DNS].id, qd=pkt[DNS].qd, aa=1, qr=1, 
-                                      an=DNSRR(rrname=qname, ttl=10, rdata=self.local_ip)))
-                        send(spf_pkt, verbose=False)
-                        logger.debug("[DNS] Intercepted %s request from %s -> Redirecting to %s", 
-                                     qname.decode(), target_ip, self.local_ip)
-                    except Exception as e:
-                        logger.error("DNS Spoof Error: %s", e)
+                # Log EVERY DNS query we see from the target
+                qname = pkt[DNS].qd.qname.decode()
+                logger.warning("[DNS_INTERCEPT] Intercepted request for %s from %s", qname, target_ip)
+                
+                try:
+                    # Forge the response
+                    spf_pkt = (IP(dst=pkt[IP].src, src=pkt[IP].dst) /
+                              UDP(dport=pkt[UDP].sport, sport=pkt[UDP].dport) /
+                              DNS(id=pkt[DNS].id, qd=pkt[DNS].qd, aa=1, qr=1, 
+                                  an=DNSRR(rrname=pkt[DNS].qd.qname, ttl=10, rdata=self.local_ip)))
+                    send(spf_pkt, verbose=False)
+                    logger.warning("[DNS_SUCCESS] Spoofed response sent! Redirecting %s to %s", qname, self.local_ip)
+                except Exception as e:
+                    logger.error("[DNS_ERROR] Failed to send spoof: %s", e)
 
         # Sniff only UDP port 53 traffic from the target IP
         sniff_filter = f"udp and port 53 and host {target_ip}"
         
-        # Note: sniff() is blocking, so we check stop_event periodically within the loop
-        while not stop_event.is_set():
-            sniff(filter=sniff_filter, prn=dns_callback, store=0, count=1, timeout=1)
+        try:
+            while not stop_event.is_set():
+                # Sniff in small batches to allow checking stop_event
+                sniff(filter=sniff_filter, prn=dns_callback, store=0, count=5, timeout=2)
+        except Exception as e:
+            logger.error("[DNS_CRITICAL] Sniffer crashed: %s", e)
 
 
 # ---------------------------------------------------------------------------

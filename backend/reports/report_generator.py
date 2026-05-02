@@ -42,7 +42,7 @@ class ReportGenerator:
         elements.append(Spacer(1, 24))
         
         # Summary Stats
-        devices = db.get_all_devices()
+        devices = db.get_devices_in_range(start_date, end_date)
         total = len(devices)
         allowed = len([d for d in devices if d['status'] == 'ALLOWED'])
         blocked = len([d for d in devices if d['status'] == 'BLOCKED'])

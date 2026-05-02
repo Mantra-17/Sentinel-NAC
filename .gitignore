@@ -35,6 +35,7 @@ prisma/dev.db-journal
 
 # Logs
 logs/*.log
+logs/*.log.*
 *.log
 
 # OS / IDE
@@ -43,6 +44,10 @@ logs/*.log
 .idea/
 *.swp
 *.swo
+
+# AI Agent Config (Cursor, Claude, Codex)
+AGENTS.md
+CLAUDE.md
 
 # Project specific
 reports/output/*

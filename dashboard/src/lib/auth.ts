@@ -25,7 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { id: admin.id },
           data: { lastLogin: new Date() },
         });
-        console.log("Authorize successful for:", admin.username, "Role:", admin.role);
+
         return { 
           id: String(admin.id), 
           name: admin.username, 
@@ -41,7 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = (user as any).role;
         token.name = user.name;
         token.email = user.email;
-        console.log("JWT Callback [Initial]:", { role: token.role, name: token.name });
+
       }
       return token;
     },
@@ -50,7 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (session.user as any).role = token.role as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
-        console.log("Session Callback:", { role: (session.user as any).role, name: session.user.name });
+
       }
       return session;
     },

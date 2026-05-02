@@ -67,7 +67,7 @@ class SentinelNAC:
         # 4. Alert if required
         if decision["trigger_alert"]:
             alert_type = "NEW_UNKNOWN_DEVICE" if decision["is_new_device"] else "BLOCKED_RECONNECT"
-            self.alerts.alert_event(alert_type, mac, ip, details=metadata)
+            self.alerts.alert_event(alert_type, mac, ip, details=decision["device"])
 
     def run(self):
         """Start the scanner and wait for shutdown signal."""
@@ -90,6 +90,8 @@ class SentinelNAC:
         self.scanner.stop()
         self.portal.stop()
         self.alerts.stop()
+        from database.db import close_pool
+        close_pool()
         logger.info("Shutdown complete.")
 
 def main():

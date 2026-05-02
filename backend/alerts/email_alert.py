@@ -7,6 +7,7 @@ Purpose: Send SMTP email notifications for security events and store
 
 import logging
 import smtplib
+import ssl
 import threading
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -42,9 +43,10 @@ def _send_smtp(recipient: str, subject: str, body_html: str) -> None:
 
     msg.attach(MIMEText(body_html, "html"))
 
+    ctx = ssl.create_default_context()
     with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
         server.ehlo()
-        server.starttls()
+        server.starttls(context=ctx)
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.sendmail(SMTP_FROM, [recipient], msg.as_string())
 

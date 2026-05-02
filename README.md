@@ -86,6 +86,53 @@ npm run dev
 
 ---
 
+## 🗄️ Schema Management
+
+> **Prisma is the single source of truth** for the database schema.
+
+Both the Python backend and the Next.js dashboard share the same PostgreSQL database. However, they use different tools to interact with it:
+
+| Layer | Tool | Role |
+| :--- | :--- | :--- |
+| **Schema migrations** | Prisma (`npx prisma migrate`) | Creates and evolves tables |
+| **Backend queries** | psycopg2 (raw SQL) | Reads/writes device and event data |
+| **Dashboard queries** | Prisma Client | Reads/writes via ORM |
+
+**⚠️ Important Rules:**
+- **Never** modify the database schema via raw SQL in `db.py`. All schema changes must go through Prisma migrations.
+- After modifying `schema.prisma`, run `npx prisma migrate dev` to generate a migration, then verify that the Python backend's SQL queries remain compatible.
+- The Python `db.py` module only uses `INSERT`, `UPDATE`, `SELECT`, and `DELETE` — it never creates or alters tables.
+
+---
+
+## 🔒 Security Architecture
+
+### Authentication & Sessions
+- **NextAuth.js** with JWT strategy — sessions are stateless and stored client-side.
+- Passwords are hashed with **bcryptjs** before storage.
+- JWT tokens contain user role information for authorization decisions.
+
+### CSRF Protection
+- **API Routes**: NextAuth JWT sessions provide inherent CSRF protection — the session token is sent as an HTTP-only cookie and validated server-side on every request.
+- **Server Actions**: Next.js 14+ server actions are automatically CSRF-protected via action IDs — each server action gets a unique, non-guessable endpoint that cannot be forged by cross-origin requests.
+- **Admin Mutations**: All write operations (`updateDeviceStatus`, `deleteDevice`) require an authenticated session with `admin` or `superadmin` role.
+
+### Rate Limiting
+- The login endpoint (`/api/auth`) is protected by an in-memory rate limiter.
+- After **5 failed attempts** from the same IP within **15 minutes**, subsequent requests receive HTTP 429.
+- The rate limit resets automatically after the window expires.
+
+### SMTP Security
+- All SMTP connections use **STARTTLS with certificate verification** (`ssl.create_default_context()`).
+- SMTP credentials are loaded from environment variables, never hardcoded.
+
+### Network Enforcement Safety
+- All enforcement modes are restricted to authorized lab environments.
+- The captive portal displays a configurable admin name (never hardcoded PII).
+- Firewall rules use MAC-based matching on INPUT and FORWARD chains to prevent IP-spoofing bypasses.
+
+---
+
 ## 👥 Team
 
 - **Mantra Patel** - Full-Stack Architecture & Security Lead

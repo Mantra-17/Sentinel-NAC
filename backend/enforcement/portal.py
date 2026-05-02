@@ -12,7 +12,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-PORTAL_HTML = """
+PORTAL_HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -182,7 +182,7 @@ PORTAL_HTML = """
             </div>
             <div class="data-item">
                 <div class="label">SYSTEM_ADMIN</div>
-                <div class="value">MANTRA PATEL</div>
+                <div class="value">{admin_name}</div>
             </div>
         </div>
 
@@ -197,10 +197,12 @@ PORTAL_HTML = """
 
 class PortalHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
+        from config.settings import SYSTEM_ADMIN_NAME
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-        self.wfile.write(PORTAL_HTML.encode("utf-8"))
+        html = PORTAL_HTML_TEMPLATE.format(admin_name=SYSTEM_ADMIN_NAME)
+        self.wfile.write(html.encode("utf-8"))
 
     def log_message(self, format, *args):
         # Suppress standard logging to avoid cluttering terminal
@@ -223,8 +225,15 @@ class CaptivePortalServer:
             self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
             self.thread.start()
             logger.info("Captive Portal Server started on %s:%d", self.host, self.port)
+        except PermissionError:
+            logger.error("CRITICAL: Permission denied for Port %d. Did you run with 'sudo'?", self.port)
+        except OSError as e:
+            if e.errno == 48: # Address already in use
+                logger.error("CRITICAL: Port %d is already occupied by another service (Apache/Nginx?).", self.port)
+            else:
+                logger.error("Failed to start Captive Portal Server: %s", e)
         except Exception as e:
-            logger.error("Failed to start Captive Portal Server: %s", e)
+            logger.error("Unexpected error starting Captive Portal: %s", e)
 
     def stop(self):
         """Shutdown the server."""
