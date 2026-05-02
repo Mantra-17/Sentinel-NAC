@@ -26,6 +26,10 @@ export const authConfig = {
         token.role = (user as any).role;
         token.name = user.name;
       }
+      // Safety Net: If user is admin but role is missing, force it
+      if (!token.role && token.name === "admin") {
+        token.role = "superadmin";
+      }
       return token;
     },
     async session({ session, token }) {
