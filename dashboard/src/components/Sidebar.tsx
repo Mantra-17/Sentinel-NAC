@@ -111,7 +111,9 @@ export default function Sidebar() {
         </div>
 
         <button 
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={async () => {
+            await signOut({ redirect: true, callbackUrl: "/login" });
+          }}
           className="w-full py-2.5 text-[10px] font-black uppercase tracking-[0.2em] border border-white/10 hover:border-white hover:bg-white hover:text-black transition-all flex items-center justify-center gap-2 group"
         >
           <LogOut className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
