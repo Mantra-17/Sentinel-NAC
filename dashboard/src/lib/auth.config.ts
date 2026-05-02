@@ -25,18 +25,16 @@ export const authConfig = {
       if (user) {
         token.role = (user as any).role;
         token.name = user.name;
-        token.email = user.email;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).role = token.role as string;
-        session.user.name = token.name as string;
-        session.user.email = token.email as string;
+        (session.user as any).role = token.role;
+        session.user.name = token.name;
       }
       return session;
     },
   },
-  providers: [], // Add providers with an empty array for now
+  providers: [],
 } satisfies NextAuthConfig;
