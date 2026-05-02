@@ -7,6 +7,6 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: "postgresql://mantra@localhost:5432/sentinel_nac?schema=public",
+    url: process.env.DATABASE_URL || "postgresql://mantra@localhost:5432/sentinel_nac?schema=public",
   },
 });
