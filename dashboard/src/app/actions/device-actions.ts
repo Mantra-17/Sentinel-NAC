@@ -68,9 +68,27 @@ export async function deleteDevice(id: number) {
       throw new Error("UNAUTHORIZED: Only administrators can delete records.");
     }
 
-    await prisma.device.delete({
+    // 1. Get the device to find its MAC address
+    const device = await prisma.device.findUnique({
       where: { id }
     });
+
+    if (device) {
+      // 2. Delete all events associated with this MAC
+      await prisma.deviceEvent.deleteMany({
+        where: { macAddress: device.macAddress }
+      });
+
+      // 3. Delete any alerts associated with this MAC
+      await prisma.alert.deleteMany({
+        where: { macAddress: device.macAddress }
+      });
+
+      // 4. Finally delete the device
+      await prisma.device.delete({
+        where: { id }
+      });
+    }
     
     revalidatePath("/dashboard");
     revalidatePath("/devices");

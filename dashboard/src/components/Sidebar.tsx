@@ -26,6 +26,10 @@ const navItems = [
 ];
 
 export default function Sidebar() {
+  // DEMO MODE: Force admin role
+  const role = "superadmin";
+  const name = "ADMIN";
+  const status = "ACTIVE";
   const pathname = usePathname();
   const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
@@ -93,8 +97,8 @@ export default function Sidebar() {
           <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-widest text-white/20">
             <span>Operator</span>
             <span className="text-white/40 font-mono flex flex-col items-end">
-              <span>{mounted ? (session?.user?.name || 'GUEST') : '...'}</span>
-              <span className="text-[7px] text-accent/40">{mounted ? ((session?.user as any)?.role || 'UNAUTHORIZED') : 'INITIALIZING'}</span>
+              <span>{mounted ? name : '...'}</span>
+              <span className="text-[7px] text-accent/40">{mounted ? role.toUpperCase() : 'INITIALIZING'}</span>
             </span>
           </div>
           <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-widest text-white/20">
@@ -105,7 +109,7 @@ export default function Sidebar() {
             <span>Auth Status</span>
             <span className="text-accent/60 font-mono flex items-center gap-1">
               <div className="w-1 h-1 bg-accent rounded-full animate-pulse" />
-              {mounted ? 'ACTIVE' : 'READY'}
+              {mounted ? status : 'READY'}
             </span>
           </div>
         </div>

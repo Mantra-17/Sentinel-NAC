@@ -6,20 +6,7 @@ export const authConfig = {
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const isOnDashboard = nextUrl.pathname === "/" ||
-                           nextUrl.pathname.startsWith("/dashboard") || 
-                           nextUrl.pathname.startsWith("/devices") || 
-                           nextUrl.pathname.startsWith("/alerts") || 
-                           nextUrl.pathname.startsWith("/reports") || 
-                           nextUrl.pathname.startsWith("/settings");
-      
-      if (isOnDashboard) {
-        if (isLoggedIn) return true;
-        return false; // Redirect unauthenticated users to login page
-      } else if (isLoggedIn && nextUrl.pathname === "/login") {
-        return Response.redirect(new URL("/dashboard", nextUrl));
-      }
+      // DEMO MODE: Allow all access to dashboard
       return true;
     },
     async jwt({ token, user }) {

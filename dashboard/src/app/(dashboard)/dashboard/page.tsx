@@ -12,19 +12,30 @@ import { formatDistanceToNow } from "date-fns";
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
-  const devices = await prisma.device.findMany();
-  const alerts = await prisma.alert.findMany({
-    take: 5,
-    orderBy: { createdAt: 'desc' },
-    include: { device: true }
-  });
+  let allDevices = [];
+  let alerts = [];
 
+  try {
+    allDevices = await prisma.device.findMany({
+      orderBy: { lastSeen: 'desc' }
+    });
+    alerts = await prisma.alert.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 4,
+      include: { device: true }
+    });
+  } catch (error) {
+    console.error("Database connection error:", error);
+  }
+
+  const devices = allDevices.slice(0, 5); // Just show latest 5 in the table
+  
   const counts = {
-    total: devices.length,
-    allowed: devices.filter(d => d.status === 'ALLOWED').length,
-    quarantined: devices.filter(d => d.status === 'QUARANTINED').length,
-    blocked: devices.filter(d => d.status === 'BLOCKED').length,
-    unknown: devices.filter(d => d.status === 'UNKNOWN').length,
+    total: allDevices.length,
+    allowed: allDevices.filter(d => d.status === 'ALLOWED').length,
+    quarantined: allDevices.filter(d => d.status === 'QUARANTINED').length,
+    blocked: allDevices.filter(d => d.status === 'BLOCKED').length,
+    unknown: allDevices.filter(d => d.status === 'UNKNOWN').length,
   };
 
   const stats = [

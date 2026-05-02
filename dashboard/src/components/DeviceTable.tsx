@@ -30,6 +30,10 @@ export default function DeviceTable() {
   useEffect(() => {
     if (authStatus !== "loading") {
       loadDevices();
+      
+      // Auto-refresh the list every 5 seconds
+      const interval = setInterval(loadDevices, 5000);
+      return () => clearInterval(interval);
     }
   }, [authStatus]);
 

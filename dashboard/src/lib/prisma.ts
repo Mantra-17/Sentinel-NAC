@@ -2,14 +2,18 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { 
+  prisma: PrismaClient;
+  pool: pg.Pool;
+};
 
 const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set");
+
+if (!globalForPrisma.pool) {
+  globalForPrisma.pool = new pg.Pool({ connectionString });
 }
-const pool = new pg.Pool({ connectionString });
-const adapter = new PrismaPg(pool);
+
+const adapter = new PrismaPg(globalForPrisma.pool);
 
 export const prisma =
   globalForPrisma.prisma ||
