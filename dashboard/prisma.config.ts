@@ -7,6 +7,6 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env.DATABASE_URL || "postgresql://mantra@localhost:5432/sentinel_nac?schema=public",
+    url: "postgresql://neondb_owner:npg_93lthuYLKIGw@ep-hidden-glitter-aohel58q.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require",
   },
 });
