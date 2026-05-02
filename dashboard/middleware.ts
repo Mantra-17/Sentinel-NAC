@@ -1,6 +1,9 @@
-import { auth } from "./src/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "./src/lib/auth.config";
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "./src/lib/rate-limit";
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
@@ -30,16 +33,7 @@ export default auth((req) => {
     }
   }
 
-  if (isApiAuthRoute) return;
-
-  if (!isLoggedIn && !isLoginPage) {
-    return Response.redirect(new URL("/login", req.nextUrl));
-  }
-
-  if (isLoggedIn && isLoginPage) {
-    return Response.redirect(new URL("/dashboard", req.nextUrl));
-  }
-
+  // NextAuth will handle the redirect logic based on authConfig.callbacks.authorized
   return;
 });
 
